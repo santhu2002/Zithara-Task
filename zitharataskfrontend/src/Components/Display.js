@@ -1,93 +1,84 @@
 import React, { useEffect, useState } from "react";
-import { Container, Table, Pagination, Form, Button } from "react-bootstrap";
+import { Container, Table, Pagination, Form } from "react-bootstrap";
 
 const Display = () => {
-  const [dummyData, setDummyData] = useState([]);
   const [data, setData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage] = useState(20);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("Sort by");
+  const [showdata, setshowdata] = useState([]);
+  const [searchTerm, setsearchTerm] = useState("");
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [searchTerm, sortOption]);
+
+  const updateDataForCurrentPage = (allData, page) => {
+    setCurrentPage(page)
+    const indexOfLastRecord = page * recordsPerPage;
+    const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+    let currentRecords = allData.slice(indexOfFirstRecord, indexOfLastRecord);
+    setshowdata(currentRecords);
+  };
 
   const fetchData = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/data", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `http://localhost:5000/api/data?sortby=${sortOption}&searchTerm=${searchTerm}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
       const jsonData = await response.json();
-      setDummyData(jsonData);
-      updateDataForCurrentPage(jsonData, currentPage);
+      updateDataForCurrentPage(jsonData, 1);
+      setData(jsonData);
     } catch (error) {
       console.error("Error fetching data", error);
     }
   };
 
-  const updateDataForCurrentPage = (allData, page) => {
-    const indexOfLastRecord = page * recordsPerPage;
-    const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-    const currentRecords = allData.slice(indexOfFirstRecord, indexOfLastRecord);
-    setData(currentRecords);
-  };
-
-  const handlePageChange = (pageNumber) => {
+  const handleonpage = (pageNumber) => {
     setCurrentPage(pageNumber);
-    updateDataForCurrentPage(dummyData, pageNumber);
-    setSearchTerm("");
+    updateDataForCurrentPage(data, pageNumber);
   };
-
-  const handleSearch = () => {
-    const filteredData = dummyData.filter(
-      (item) =>
-        item.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.location.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setCurrentPage(1); // Reset to the first page after search
-    updateDataForCurrentPage(filteredData, 1);
-  };
-
-  useEffect(() => {
-    if (searchTerm === "") {
-      fetchData();
-    } else {
-      handleSearch();
-    }
-  }, [searchTerm]);
 
   return (
     <>
       <Container className="my-4">
-        <Form className="my-3" style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignContent: "center",
-          justifyContent: "space-around",
-          alignItems: "center",
-        }}>
+        <Form
+          className="my-3"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignContent: "center",
+            justifyContent: "space-around",
+            alignItems: "center",
+          }}
+        >
           <Form.Select
             aria-label="Default select example"
             style={{ width: "30%" }}
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
           >
-            <option>Sort</option>
-            <option value="1">Date</option>
-            <option value="2">Time</option>
+            <option value="Sort by">Default</option>
+            <option value="date">Date</option>
+            <option value="time">Time</option>
           </Form.Select>
           <Form.Group style={{ width: "30%" }}>
             <Form.Control
               type="text"
               placeholder="Search by name or location"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setsearchTerm(e.target.value)}
             />
           </Form.Group>
         </Form>
@@ -95,37 +86,40 @@ const Display = () => {
         <Table striped bordered hover>
           <thead>
             <tr>
-              <th>SNo</th>
-              <th>Customer Name</th>
-              <th>Age</th>
-              <th>Phone</th>
-              <th>Location</th>
-              <th>Date</th>
+              <th rowSpan={2}>SNo</th>
+              <th rowSpan={2}>Customer Name</th>
+              <th rowSpan={2}>Age</th>
+              <th rowSpan={2}>Phone</th>
+              <th rowSpan={2}>Location</th>
+              <th colSpan="2">Created At</th>
+            </tr>
+            <tr>
               <th>Time</th>
+              <th>Date</th>
             </tr>
           </thead>
           <tbody>
-            {data.map((item, index) => (
+            {showdata.map((item, index) => (
               <tr key={index}>
                 <td>{item.sno}</td>
                 <td>{item.customer_name}</td>
                 <td>{item.age}</td>
                 <td>{item.phone}</td>
                 <td>{item.location}</td>
-                <td>{new Date(item.created_at).toLocaleDateString()}</td>
                 <td>{new Date(item.created_at).toLocaleTimeString()}</td>
+                <td>{new Date(item.created_at).toLocaleDateString()}</td>
               </tr>
             ))}
           </tbody>
         </Table>
 
         <Pagination>
-          {[...Array(Math.ceil(dummyData.length / recordsPerPage)).keys()].map(
+          {[...Array(Math.ceil(data.length / recordsPerPage)).keys()].map(
             (number) => (
               <Pagination.Item
                 key={number + 1}
                 active={number + 1 === currentPage}
-                onClick={() => handlePageChange(number + 1)}
+                onClick={() => handleonpage(number + 1)}
               >
                 {number + 1}
               </Pagination.Item>
